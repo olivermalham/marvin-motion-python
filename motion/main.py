@@ -1,4 +1,3 @@
-from time import ticks_ms, ticks_diff
 from pwm_led import update_led
 from tools import run_every
 
