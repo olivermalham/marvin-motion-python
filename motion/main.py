@@ -10,3 +10,7 @@ while True:
     run_every(20, update_led)
     loop = loop + 1
 
+    # TODO: Declarative style!
+
+    # On every loop, updated distance travelled by checking encoder inputs
+
