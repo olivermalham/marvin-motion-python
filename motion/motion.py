@@ -9,6 +9,7 @@ def target_velocity(d: int, d_target: int, v_prop: float) -> float:
     :param v_prop: fraction of maximum velocity to use
     :return: target velocity
     """
+
     t_ramp: float = 3000.0 * v_prop  # Time to ramp up to maximum velocity, in milliseconds
     max_a: float = 100.0 * v_prop      # Fixed acceleration rate, set manually
     v_max = max_a * t_ramp
