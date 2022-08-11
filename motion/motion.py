@@ -29,7 +29,8 @@ def target_velocity(d: int, d_target: int, v_prop: float) -> float:
         return v_max
     elif (d_target - d_ramp) < d < d_target:
         # Deceleration phase
-        return v_max - v_max * ((d_target - d_ramp) / d)  # FIXME! This needs more thought
+        # return v_max - v_max * ((d_target - d_ramp) / d)  # FIXME! This needs more thought
+        return v_max
     else:
         return 0.0
 
