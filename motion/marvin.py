@@ -1,7 +1,13 @@
 from PID import PID
-# from dataclasses import dataclass
-# from motion import target_velocity, velocity_to_pwm
+from motion import target_velocity, velocity_to_pwm
 from machine import PWM, Pin
+
+# List of lists. Each sublist is a distance, v_prop tuple, e.g.
+# [
+#   [(100,1.0),(100,1.0),(80,0.5),(80,0.5),(100,1.0),(100,1.0)],
+#   [(100,1.0),(100,1.0),(80,0.5),(80,0.5),(100,1.0),(100,1.0)],
+# ]
+command_queue = []
 
 
 class Wheel:
@@ -12,8 +18,20 @@ class Wheel:
     target: int = 0
     v_prop: float = 0.0
 
+    def __init__(self, pwm_pin: PWM = None,
+                 pid: PID = None,
+                 pwm: int = 0,
+                 distance: int = 0,
+                 target: int = 0,
+                 v_prop: float = 0.0):
+        self.pwm_pin = pwm_pin
+        self.pid = pid
+        self.pwm = pwm
+        self.distance = distance
+        self.target = target
+        self.v_prop = v_prop
 
-# TODO: Need to pass in a list of wheels, not just one
+
 def servo_loop(wheels: [Wheel]) -> [Wheel]:
     """ Generate the PWM value for a wheel, using the trapezoidal motion control along with PID
 
@@ -29,6 +47,9 @@ def config_wheels() -> [Wheel]:
 
     :return:
     """
-    # return [Wheel(pwm_pin=PWM(Pin(10)), pid=PID(scale="ms")),
-    #         Wheel(pwm_pin=PWM(Pin(11)), pid=PID(scale="ms"))]
-    return []
+    return [Wheel(pwm_pin=PWM(Pin(10)), pid=PID(scale="ms")),
+            Wheel(pwm_pin=PWM(Pin(11)), pid=PID(scale="ms")),
+            Wheel(pwm_pin=PWM(Pin(12)), pid=PID(scale="ms")),
+            Wheel(pwm_pin=PWM(Pin(13)), pid=PID(scale="ms")),
+            Wheel(pwm_pin=PWM(Pin(14)), pid=PID(scale="ms")),
+            Wheel(pwm_pin=PWM(Pin(15)), pid=PID(scale="ms"))]

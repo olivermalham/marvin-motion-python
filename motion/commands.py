@@ -1,3 +1,4 @@
+import marvin
 
 
 def process_command(c, command_input, wheels):
@@ -10,7 +11,7 @@ def process_command(c, command_input, wheels):
             command_parts = command_input.split()
             try:
                 func = command_list[command_parts[0]]
-                func(wheels, *command_parts[1:])
+                func(wheels, command_parts[1:])
             except:
                 print(f"ERROR '{command_input}' failed!")
             finally:
@@ -18,14 +19,15 @@ def process_command(c, command_input, wheels):
     return command_input
 
 
-def echo(wheel_list):
-    """
+def stop(wheels, args):
+    print("STOP!!!")
+    marvin.command_queue = [[(0, 0.0), (0, 0.0), (0, 0.0), (0, 0.0), (0, 0.0), (0, 0.0)]]
 
-    :param args:
-    :return:
-    """
-    print("STATUS COMMAND")
+
+def echo(_, arg_list):
+    print(f"ECHO: {arg_list}")
 
 
 # Define a dictionary of functions that handle specific commands
-command_list = {"echo": echo}
+command_list = {"echo": echo,
+                "stop": stop}
