@@ -32,25 +32,7 @@ while True:
     #
     # run_every(1000, servo_loop, wheels)
 
-    # On every loop, updated distance travelled by checking encoder inputs
-    # TODO: Simulate movement by incrementing d in proportion to velocity
-
     # Command processing
-    result = uselect.select([sys.stdin], [], [], 0)[0]
-
-    if result:
+    if uselect.select([sys.stdin], [], [], 0)[0]:
         c = sys.stdin.read(1)
-        if c != '\n':
-            command_input = command_input + c
-            print(f'{c}', end='')
-        else:
-            if command_input != "":
-                print(f'\nCommand: {command_input}\n')
-                command_parts = command_input.split()
-                try:
-                    func = getattr(commands, command_parts[0])
-                    func(wheels, *command_parts[1:])
-                except:
-                    print(f"ERROR '{command_input}' failed!")
-                finally:
-                    command_input = ""
+        command_input = commands.process_command(c, command_input, wheels)
