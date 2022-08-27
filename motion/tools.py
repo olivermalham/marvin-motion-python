@@ -19,4 +19,3 @@ def run_every(milliseconds: int, func, *args, **kwargs):
         # print(f"Run every {ticks_ms}")
         return func(*args, **kwargs)
     return None
-
