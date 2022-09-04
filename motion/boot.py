@@ -4,7 +4,7 @@ from pwm_led import update_led
 from tools import run_every
 import sys
 import uselect
-from commands import process_command, command_list
+from commands import process_command, command_queue
 
 print("Marvin Motion Controller")
 
@@ -30,12 +30,13 @@ while True:
         c = sys.stdin.read(1)
         command_input = process_command(c, command_input, wheels)
 
-    [wheel.update_encoder() for wheel in wheels]
+    # [wheel.update_encoder() for wheel in wheels]
 
     # If we've finished moving, remove that command from the buffer and move on to the next
     if not any([wheel.moving() for wheel in wheels]):
-        command_list = command_list[1:]
-        if command_list:
-            new_command = command_list[0]
+        if command_queue:
+            new_command = command_queue[0]
+            print(f"Executing command - {new_command}")
             for i in range(len(new_command)):
                 wheels[i].target, wheels[i].v_prop = new_command[i]
+            command_queue = command_queue[1:]

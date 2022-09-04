@@ -68,6 +68,9 @@ class Wheel:
         self.pid.setpoint = self._target_velocity()
         self.pwm_pin.duty_u16(self._velocity_to_pwm(self.pid(self.velocity)))
 
+    def stop(self):
+        self.pwm_pin.duty_u16(0)
+
     def _target_velocity(self) -> float:
         """
         Calcualate the target velocity as per a trapezoidal profile, derived from the distance travelled (as that is the
@@ -111,7 +114,8 @@ def servo_loop(wheels: [Wheel]) -> None:
     """ Update the PWM setting for each motor using encoder feedback and PID control.
     """
     for wheel in wheels:
-        wheel.update_motor()
+        # wheel.update_motor()
+        pass
 
 
 def config_wheels() -> [Wheel]:
