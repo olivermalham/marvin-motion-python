@@ -53,20 +53,24 @@ class Wheel:
         """
         if self.encoder_a.value() != self.encoder_a_last:
             self.encoder_a_last = self.encoder_a.value()
-            if self.encoder_b.value():
+            if self.encoder_a.value() and self.encoder_b.value():
+                print(f"encoder up tick")
                 self.distance = self.distance + 1
-            else:
+            elif self.encoder_a.value() and not self.encoder_b.value():
+                print(f"encoder down tick")
                 self.distance = self.distance - 1
             current_ticks = time.ticks_ms()
 
-            # We've moved one encoder tick in distance, so this gets the velocity in ticks per second
+            # We've moved one encoder tick in distance, so this gets the velocity in ticks per millisecond
             self.velocity = 1/time.ticks_diff(current_ticks, self.last_tick)
             self.last_tick = current_ticks
 
     def update_motor(self):
         self.dir_pin.high() if self.distance > self.target else self.dir_pin.low()
-        self.pid.setpoint = self._target_velocity()
-        self.pwm_pin.duty_u16(self._velocity_to_pwm(self.pid(self.velocity)))
+        # self.pid.setpoint = self._target_velocity()
+        # self.pwm_pin.duty_u16(self._velocity_to_pwm(self.pid(self.velocity)))
+        # self.pwm_pin.duty_u16(self._velocity_to_pwm(self.velocity))
+        self.pwm_pin.duty_u16(1000)
 
     def stop(self):
         self.pwm_pin.duty_u16(0)
@@ -79,6 +83,10 @@ class Wheel:
 
         :return: target velocity
         """
+
+        if self.v_prop == 0.0:
+            return 0.0
+
         t_ramp: float = 3000.0 * self.v_prop  # Time to ramp up to maximum velocity, in milliseconds
         max_a: float = 100.0 * self.v_prop  # Fixed acceleration rate, set manually
         v_max = max_a * t_ramp
@@ -104,7 +112,7 @@ class Wheel:
 
     def _velocity_to_pwm(self, v: float) -> int:
         """ Includes clamping to valid PWM range"""
-        pwm = int(v * 1.0) + self.pwm_offset
+        pwm = int(v * 100.0) + self.pwm_offset
         pwm = 1023 if pwm > 1023 else pwm
         pwm = 0 if pwm < 0 else pwm
         return pwm
@@ -114,7 +122,7 @@ def servo_loop(wheels: [Wheel]) -> None:
     """ Update the PWM setting for each motor using encoder feedback and PID control.
     """
     for wheel in wheels:
-        # wheel.update_motor()
+        wheel.update_motor()
         pass
 
 
@@ -123,9 +131,15 @@ def config_wheels() -> [Wheel]:
 
     :return: List of Wheel objects with all appropriate pins initialised etc.
     """
-    return [Wheel(pwm_pin=PWM(Pin(10)), pid=PID(scale="ms")),
-            Wheel(pwm_pin=PWM(Pin(11)), pid=PID(scale="ms")),
-            Wheel(pwm_pin=PWM(Pin(12)), pid=PID(scale="ms")),
-            Wheel(pwm_pin=PWM(Pin(13)), pid=PID(scale="ms")),
-            Wheel(pwm_pin=PWM(Pin(14)), pid=PID(scale="ms")),
-            Wheel(pwm_pin=PWM(Pin(15)), pid=PID(scale="ms"))]
+    return [Wheel(pwm_pin=PWM(Pin(6, Pin.OUT)), dir_pin=Pin(7, Pin.OUT),
+                  encoder_a=Pin(16, Pin.IN), encoder_b=Pin(17, Pin.IN), pid=PID(scale="ms")),
+            Wheel(pwm_pin=PWM(Pin(0, Pin.OUT)), dir_pin=Pin(1, Pin.OUT),
+                  encoder_a=Pin(22, Pin.IN), encoder_b=Pin(26, Pin.IN), pid=PID(scale="ms")),
+            Wheel(pwm_pin=PWM(Pin(8, Pin.OUT)), dir_pin=Pin(9, Pin.OUT),
+                  encoder_a=Pin(18, Pin.IN), encoder_b=Pin(19, Pin.IN), pid=PID(scale="ms")),
+            Wheel(pwm_pin=PWM(Pin(2, Pin.OUT)), dir_pin=Pin(3, Pin.OUT),
+                  encoder_a=Pin(14, Pin.IN), encoder_b=Pin(15, Pin.IN), pid=PID(scale="ms")),
+            Wheel(pwm_pin=PWM(Pin(10, Pin.OUT)), dir_pin=Pin(11, Pin.OUT),
+                  encoder_a=Pin(20, Pin.IN), encoder_b=Pin(21, Pin.IN), pid=PID(scale="ms")),
+            Wheel(pwm_pin=PWM(Pin(4, Pin.OUT)), dir_pin=Pin(5, Pin.OUT),
+                  encoder_a=Pin(13, Pin.IN), encoder_b=Pin(12, Pin.IN), pid=PID(scale="ms"))]

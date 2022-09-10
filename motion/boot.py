@@ -22,7 +22,7 @@ command_input = ""
 while True:
     loop = loop + 1
 
-    run_every(10, update_led, led_pwm)
+    run_every(5, update_led, led_pwm)
     run_every(50, servo_loop, wheels)
 
     # Command processing
@@ -30,7 +30,7 @@ while True:
         c = sys.stdin.read(1)
         command_input = process_command(c, command_input, wheels)
 
-    # [wheel.update_encoder() for wheel in wheels]
+    [wheel.update_encoder() for wheel in wheels]
 
     # If we've finished moving, remove that command from the buffer and move on to the next
     if not any([wheel.moving() for wheel in wheels]):
