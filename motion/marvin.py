@@ -4,8 +4,8 @@ from machine import PWM, Pin
 
 
 class Wheel:
-    pwm_pin: PWM
-    dir_pin: Pin
+    pwm_pin_a: PWM
+    pwm_pin_b: PWM
     pid: PID
     pwm: int = 0
     distance: int = 0
@@ -17,19 +17,29 @@ class Wheel:
     last_tick = None
     velocity: float = 0.0
     pwm_offset: int = 0
+    FORWARD: int = 1
+    REVERSE: int = 0
+    encoder_tolerance: int = 50
 
     def __init__(self,
-                 pwm_pin: PWM = None,
-                 dir_pin: Pin = None,
+                 pwm_pin_a: PWM = None,
+                 pwm_pin_b: PWM = None,
                  pid: PID = None,
                  pwm: int = 0,
                  distance: int = 0,
                  target: int = 0,
                  v_prop: float = 0.0,
                  encoder_a: Pin = None,
-                 encoder_b: Pin = None):
-        self.pwm_pin = pwm_pin
-        self.dir_pin = dir_pin
+                 encoder_b: Pin = None,
+                 wheel_name: str = "Not Set"):
+        self.pwm_pin_a = pwm_pin_a
+        self.pwm_pin_a.freq(16000)
+        self.pwm_pin_a.duty_u16(0)
+
+        self.pwm_pin_b = pwm_pin_b
+        self.pwm_pin_b.freq(16000)
+        self.pwm_pin_b.duty_u16(0)
+
         self.pid = pid
         self.pwm = pwm
         self.distance = distance
@@ -37,9 +47,10 @@ class Wheel:
         self.v_prop = v_prop
         self.encoder_a = encoder_a
         self.encoder_b = encoder_b
-        self.last_tick = time.ticks_ms()
+        self.last_tick = time.ticks_us()
         self.velocity = 0.0
         self.pwm_offset = 0
+        self.wheel_name = wheel_name
 
     def moving(self) -> bool:
         return self.pwm > 0
@@ -54,31 +65,46 @@ class Wheel:
         if self.encoder_a.value() != self.encoder_a_last:
             self.encoder_a_last = self.encoder_a.value()
             if self.encoder_a.value() and self.encoder_b.value():
-                print(f"encoder up tick")
+                # print(f"Wheel {self.wheel_name} encoder up tick")
                 self.distance = self.distance + 1
             elif self.encoder_a.value() and not self.encoder_b.value():
-                print(f"encoder down tick")
+                # print(f"Wheel {self.wheel_name} encoder down tick")
                 self.distance = self.distance - 1
-            current_ticks = time.ticks_ms()
+            current_ticks = time.ticks_us()
 
             # We've moved one encoder tick in distance, so this gets the velocity in ticks per millisecond
             self.velocity = 1/time.ticks_diff(current_ticks, self.last_tick)
             self.last_tick = current_ticks
 
     def update_motor(self):
-        self.dir_pin.high() if self.distance > self.target else self.dir_pin.low()
+
+        if abs(self.distance - self.target) < self.encoder_tolerance:
+            self.stop()
+            return
+
         # self.pid.setpoint = self._target_velocity()
         # self.pwm_pin.duty_u16(self._velocity_to_pwm(self.pid(self.velocity)))
         # self.pwm_pin.duty_u16(self._velocity_to_pwm(self.velocity))
-        self.pwm_pin.duty_u16(1000)
+
+        # self.pwm_pin_a.duty_u16(self._velocity_to_pwm(self._target_velocity()))
+        # self.pwm_pin_a.duty_u16(60000)
+        # self.pwm_pin_b.duty_u16(0)
+
+        if self.distance > self.target:
+            self.pwm_pin_a.duty_u16(65000)
+            self.pwm_pin_b.duty_u16(0)
+        else:
+            self.pwm_pin_a.duty_u16(0)
+            self.pwm_pin_b.duty_u16(65000)
 
     def stop(self):
-        self.pwm_pin.duty_u16(0)
+        self.pwm_pin_a.duty_u16(0)
+        self.pwm_pin_b.duty_u16(0)
 
     def _target_velocity(self) -> float:
         """
-        Calcualate the target velocity as per a trapezoidal profile, derived from the distance travelled (as that is the
-        only value measured by the hardware. Assumes that all moves will be at constant acceleration up to maximum
+        Calculate the target velocity as per a trapezoidal profile, derived from the distance travelled (as that is the
+        only value measured by the hardware). Assumes that all moves will be at constant acceleration up to maximum
         velocity. V_prop scales maximum velocity and acceleration to permit co-ordinated moves for all wheels together
 
         :return: target velocity
@@ -112,8 +138,8 @@ class Wheel:
 
     def _velocity_to_pwm(self, v: float) -> int:
         """ Includes clamping to valid PWM range"""
-        pwm = int(v * 100.0) + self.pwm_offset
-        pwm = 1023 if pwm > 1023 else pwm
+        pwm = int(v * 60000.0) + self.pwm_offset
+        pwm = 60000 if pwm > 60000 else pwm
         pwm = 0 if pwm < 0 else pwm
         return pwm
 
@@ -123,7 +149,7 @@ def servo_loop(wheels: [Wheel]) -> None:
     """
     for wheel in wheels:
         wheel.update_motor()
-        pass
+        # pass
 
 
 def config_wheels() -> [Wheel]:
@@ -131,15 +157,29 @@ def config_wheels() -> [Wheel]:
 
     :return: List of Wheel objects with all appropriate pins initialised etc.
     """
-    return [Wheel(pwm_pin=PWM(Pin(6, Pin.OUT)), dir_pin=Pin(7, Pin.OUT),
+    return [
+            Wheel(wheel_name="1",
+                  pwm_pin_a=PWM(Pin(6, Pin.OUT, value=0)),
+                  pwm_pin_b=PWM(Pin(7, Pin.OUT, value=0)),
                   encoder_a=Pin(16, Pin.IN), encoder_b=Pin(17, Pin.IN), pid=PID(scale="ms")),
-            Wheel(pwm_pin=PWM(Pin(0, Pin.OUT)), dir_pin=Pin(1, Pin.OUT),
+            Wheel(wheel_name="2",
+                  pwm_pin_a=PWM(Pin(0, Pin.OUT, value=0)),
+                  pwm_pin_b=PWM(Pin(1, Pin.OUT, value=0)),
                   encoder_a=Pin(22, Pin.IN), encoder_b=Pin(26, Pin.IN), pid=PID(scale="ms")),
-            Wheel(pwm_pin=PWM(Pin(8, Pin.OUT)), dir_pin=Pin(9, Pin.OUT),
-                  encoder_a=Pin(18, Pin.IN), encoder_b=Pin(19, Pin.IN), pid=PID(scale="ms")),
-            Wheel(pwm_pin=PWM(Pin(2, Pin.OUT)), dir_pin=Pin(3, Pin.OUT),
+            Wheel(wheel_name="3",
+                  pwm_pin_a=PWM(Pin(8, Pin.OUT, value=0)),
+                  pwm_pin_b=PWM(Pin(9, Pin.OUT, value=0)),
+                  encoder_a=Pin(19, Pin.IN), encoder_b=Pin(18, Pin.IN), pid=PID(scale="ms")),
+            Wheel(wheel_name="4",
+                  pwm_pin_a=PWM(Pin(2, Pin.OUT, value=0)),
+                  pwm_pin_b=PWM(Pin(3, Pin.OUT, value=0)),
                   encoder_a=Pin(14, Pin.IN), encoder_b=Pin(15, Pin.IN), pid=PID(scale="ms")),
-            Wheel(pwm_pin=PWM(Pin(10, Pin.OUT)), dir_pin=Pin(11, Pin.OUT),
+            Wheel(wheel_name="5",
+                  pwm_pin_a=PWM(Pin(10, Pin.OUT, value=0)),
+                  pwm_pin_b=PWM(Pin(11, Pin.OUT, value=0)),
                   encoder_a=Pin(20, Pin.IN), encoder_b=Pin(21, Pin.IN), pid=PID(scale="ms")),
-            Wheel(pwm_pin=PWM(Pin(4, Pin.OUT)), dir_pin=Pin(5, Pin.OUT),
-                  encoder_a=Pin(13, Pin.IN), encoder_b=Pin(12, Pin.IN), pid=PID(scale="ms"))]
+            Wheel(wheel_name="6",
+                  pwm_pin_a=PWM(Pin(4, Pin.OUT, value=0)),
+                  pwm_pin_b=PWM(Pin(5, Pin.OUT, value=0)),
+                  encoder_a=Pin(13, Pin.IN), encoder_b=Pin(12, Pin.IN), pid=PID(scale="ms")),
+            ]

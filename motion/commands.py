@@ -13,7 +13,7 @@ def process_command(c, command_input, wheels):
         command_input = command_input + c
     else:
         if command_input != "":
-            # print(f'\nCommand: {command_input}\n')
+            print(f'\nCommand: {command_input}\n')
             command_parts = command_input.split()
             try:
                 func = command_list[command_parts[0]]
@@ -31,6 +31,14 @@ def move(_, args):
 
     Example command:
         move 10000,1.0 10000,1.0 8000,0.8 8000,0.8 9500,0.95 9500,0.95
+        move 10000,1.0 10000,1.0 10000,1.0 10000,1.0 10000,1.0 10000,1.0
+
+        move 10000,1.0 0,0.0 0,0.0 0,0.0 0,0.0 0,0.0
+        move 0,0.0 10000,1.0 0,0.0 0,0.0 0,0.0 0,0.0
+        move 0,0.0 0,0.0 10000,1.0 0,0.0 0,0.0 0,0.0
+        move 0,0.0 0,0.0 0,0.0 10000,1.0 0,0.0 0,0.0
+        move 0,0.0 0,0.0 0,0.0 0,0.0 10000,1.0 0,0.0
+        move 0,0.0 0,0.0 0,0.0 0,0.0 0,0.0 10000,1.0
 
     """
     global command_queue
@@ -67,7 +75,7 @@ def status(wheels, _):
     """ List out all the distances and PWM settings for the motors """
     i = 0
     for wheel in wheels:
-        print(f"{i} - D:{wheel.distance} Target:{wheel.target} V_target:{wheel.velocity}")
+        print(f"{wheel.wheel_name} - D:{wheel.distance}\t Target:{wheel.target}\t V_target:{wheel.velocity}\t A:{wheel.pwm_pin_a.duty_u16()}\t B:{wheel.pwm_pin_b.duty_u16()}\n")
         i = i + 1
 
 
