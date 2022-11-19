@@ -53,7 +53,7 @@ class Wheel:
         self.wheel_name = wheel_name
 
     def moving(self) -> bool:
-        return self.pwm > 0
+        return (self.pwm_pin_a.duty_u16() > 0) | (self.pwm_pin_b.duty_u16() > 0)
 
     def update_encoder(self):
         """ Check if the encoder A channel has changed, if so check the encoder B channel to figure out direction
@@ -78,24 +78,24 @@ class Wheel:
 
     def update_motor(self):
 
-        if abs(self.distance - self.target) < self.encoder_tolerance:
-            self.stop()
-            return
+        # if abs(self.distance - self.target) < self.encoder_tolerance:
+        #     self.stop()
+        #     return
 
         # self.pid.setpoint = self._target_velocity()
         # self.pwm_pin.duty_u16(self._velocity_to_pwm(self.pid(self.velocity)))
         # self.pwm_pin.duty_u16(self._velocity_to_pwm(self.velocity))
 
         # self.pwm_pin_a.duty_u16(self._velocity_to_pwm(self._target_velocity()))
-        # self.pwm_pin_a.duty_u16(60000)
+        self.pwm_pin_a.duty_u16(65500)
         # self.pwm_pin_b.duty_u16(0)
-
-        if self.distance > self.target:
-            self.pwm_pin_a.duty_u16(65000)
-            self.pwm_pin_b.duty_u16(0)
-        else:
-            self.pwm_pin_a.duty_u16(0)
-            self.pwm_pin_b.duty_u16(65000)
+        #
+        # if self.distance < self.target:
+        #     self.pwm_pin_a.duty_u16(65000)
+        #     self.pwm_pin_b.duty_u16(0)
+        # else:
+        #     self.pwm_pin_a.duty_u16(0)
+        #     self.pwm_pin_b.duty_u16(65000)
 
     def stop(self):
         self.pwm_pin_a.duty_u16(0)
@@ -169,7 +169,7 @@ def config_wheels() -> [Wheel]:
             Wheel(wheel_name="3",
                   pwm_pin_a=PWM(Pin(8, Pin.OUT, value=0)),
                   pwm_pin_b=PWM(Pin(9, Pin.OUT, value=0)),
-                  encoder_a=Pin(19, Pin.IN), encoder_b=Pin(18, Pin.IN), pid=PID(scale="ms")),
+                  encoder_a=Pin(18, Pin.IN), encoder_b=Pin(19, Pin.IN), pid=PID(scale="ms")),
             Wheel(wheel_name="4",
                   pwm_pin_a=PWM(Pin(2, Pin.OUT, value=0)),
                   pwm_pin_b=PWM(Pin(3, Pin.OUT, value=0)),

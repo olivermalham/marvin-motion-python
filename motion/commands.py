@@ -30,24 +30,24 @@ def move(_, args):
         move wheel1_dist,wheel1_v_prop wheel2_dist,wheel2_v_prop ....
 
     Example command:
-        move 10000,1.0 10000,1.0 8000,0.8 8000,0.8 9500,0.95 9500,0.95
-        move 10000,1.0 10000,1.0 10000,1.0 10000,1.0 10000,1.0 10000,1.0
+        move 1000,1.0 1000,1.0 800,0.8 800,0.8 950,0.95 950,0.95
+        move 1000,1.0 1000,1.0 1000,1.0 1000,1.0 1000,1.0 1000,1.0
 
-        move 10000,1.0 0,0.0 0,0.0 0,0.0 0,0.0 0,0.0
-        move 0,0.0 10000,1.0 0,0.0 0,0.0 0,0.0 0,0.0
-        move 0,0.0 0,0.0 10000,1.0 0,0.0 0,0.0 0,0.0
-        move 0,0.0 0,0.0 0,0.0 10000,1.0 0,0.0 0,0.0
-        move 0,0.0 0,0.0 0,0.0 0,0.0 10000,1.0 0,0.0
-        move 0,0.0 0,0.0 0,0.0 0,0.0 0,0.0 10000,1.0
+        move 4000,1.0 0,0.0 0,0.0 0,0.0 0,0.0 0,0.0
+        move 0,0.0 4000,1.0 0,0.0 0,0.0 0,0.0 0,0.0
+        move 0,0.0 0,0.0 4000,1.0 0,0.0 0,0.0 0,0.0
+        move 0,0.0 0,0.0 0,0.0 40000,1.0 0,0.0 0,0.0
+        move 0,0.0 0,0.0 0,0.0 0,0.0 4000,1.0 0,0.0
+        move 0,0.0 0,0.0 0,0.0 0,0.0 0,0.0 4000,1.0
 
     """
     global command_queue
     new_command = []
 
-    print(f"Pairs - {args}")
+    # print(f"Pairs - {args}")
     for pair in args:
         target, v_prop = pair.split(",")
-        print(f"Split - {target} - {v_prop}")
+        # print(f"Split - {target} - {v_prop}")
         new_command.append((int(target), float(v_prop)))
     command_queue.append(new_command)
 
@@ -75,8 +75,9 @@ def status(wheels, _):
     """ List out all the distances and PWM settings for the motors """
     i = 0
     for wheel in wheels:
-        print(f"{wheel.wheel_name} - D:{wheel.distance}\t Target:{wheel.target}\t V_target:{wheel.velocity}\t A:{wheel.pwm_pin_a.duty_u16()}\t B:{wheel.pwm_pin_b.duty_u16()}\n")
+        print(f"{wheel.wheel_name} - D:{wheel.distance}\t\t Target:{wheel.target}\t V_target:{wheel.velocity}\t A:{wheel.pwm_pin_a.duty_u16()}\t B:{wheel.pwm_pin_b.duty_u16()}")
         i = i + 1
+    print("\n")
 
 
 # Define a dictionary of functions that handle specific commands
