@@ -1,4 +1,5 @@
 import utime
+# import machine as utime
 
 
 def _clamp(value, limits):
