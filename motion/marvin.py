@@ -2,6 +2,8 @@ import time
 from PID import PID
 from machine import PWM, Pin
 
+MAX_PWM = 65535
+
 
 class Wheel:
     pwm_pin_a: PWM
@@ -33,11 +35,11 @@ class Wheel:
                  encoder_b: Pin = None,
                  wheel_name: str = "Not Set"):
         self.pwm_pin_a = pwm_pin_a
-        self.pwm_pin_a.freq(16000)
+        self.pwm_pin_a.freq(1000)
         self.pwm_pin_a.duty_u16(0)
 
         self.pwm_pin_b = pwm_pin_b
-        self.pwm_pin_b.freq(16000)
+        self.pwm_pin_b.freq(1000)
         self.pwm_pin_b.duty_u16(0)
 
         self.pid = pid
@@ -78,24 +80,24 @@ class Wheel:
 
     def update_motor(self):
 
-        # if abs(self.distance - self.target) < self.encoder_tolerance:
-        #     self.stop()
-        #     return
+        if abs(self.distance - self.target) < self.encoder_tolerance:
+            self.stop()
+            return
 
         # self.pid.setpoint = self._target_velocity()
         # self.pwm_pin.duty_u16(self._velocity_to_pwm(self.pid(self.velocity)))
         # self.pwm_pin.duty_u16(self._velocity_to_pwm(self.velocity))
 
         # self.pwm_pin_a.duty_u16(self._velocity_to_pwm(self._target_velocity()))
-        self.pwm_pin_a.duty_u16(65500)
-        # self.pwm_pin_b.duty_u16(0)
-        #
-        # if self.distance < self.target:
-        #     self.pwm_pin_a.duty_u16(65000)
-        #     self.pwm_pin_b.duty_u16(0)
-        # else:
-        #     self.pwm_pin_a.duty_u16(0)
-        #     self.pwm_pin_b.duty_u16(65000)
+        # self.pwm_pin_a.duty_u16(32000)
+        # self.pwm_pin_b.duty_u16(MAX_PWM)
+
+        if self.distance < self.target:
+            self.pwm_pin_a.duty_u16(MAX_PWM - self.pwm)
+            self.pwm_pin_b.duty_u16(MAX_PWM)
+        else:
+            self.pwm_pin_a.duty_u16(MAX_PWM)
+            self.pwm_pin_b.duty_u16(MAX_PWM - self.pwm)
 
     def stop(self):
         self.pwm_pin_a.duty_u16(0)
@@ -138,8 +140,8 @@ class Wheel:
 
     def _velocity_to_pwm(self, v: float) -> int:
         """ Includes clamping to valid PWM range"""
-        pwm = int(v * 60000.0) + self.pwm_offset
-        pwm = 60000 if pwm > 60000 else pwm
+        pwm = int(v * MAX_PWM) + self.pwm_offset
+        pwm = MAX_PWM if pwm > MAX_PWM else pwm
         pwm = 0 if pwm < 0 else pwm
         return pwm
 
