@@ -44,10 +44,8 @@ def move(_, args):
     global command_queue
     new_command = []
 
-    # print(f"Pairs - {args}")
     for pair in args:
         target, v_prop = pair.split(",")
-        # print(f"Split - {target} - {v_prop}")
         new_command.append((int(target), float(v_prop)))
     command_queue.append(new_command)
 

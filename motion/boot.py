@@ -1,4 +1,4 @@
-from machine import Pin, PWM
+from machine import Pin
 from marvin import config_wheels, servo_loop
 import sys
 import uselect
@@ -23,7 +23,6 @@ command_input = ""
 while True:
     loop = loop + 1
 
-    # run_every(200, update_led, led_pwm)
     ticks_us = time.ticks_us()
 
     if time.ticks_diff(ticks_us, start_tick) % 500 == 0:
