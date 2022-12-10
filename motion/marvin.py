@@ -22,7 +22,7 @@ class Wheel:
     pwm_offset: int = 0
     FORWARD: int = 1
     REVERSE: int = 0
-    encoder_tolerance: int = 50
+    encoder_tolerance: int = 120
 
     def __init__(self,
                  pwm_pin_a: PWM = None,
@@ -55,11 +55,11 @@ class Wheel:
         self.pwm_offset = 0
         self.wheel_name = wheel_name
 
-    @micropython.native
+    # @micropython.native
     def moving(self) -> bool:
-        return (self.pwm_pin_a.duty_u16() == MAX_PWM) or (self.pwm_pin_b.duty_u16() == MAX_PWM)
+        return (self.pwm_pin_a.duty_u16() != MAX_PWM) or (self.pwm_pin_b.duty_u16() != MAX_PWM)
 
-    @micropython.native
+    # @micropython.native
     def update_encoder(self):
         """ Check if the encoder A channel has changed, if so check the encoder B channel to figure out direction
         and update the distance travelled. Update the measured velocity at the same time, used to drive the PID to
@@ -76,10 +76,10 @@ class Wheel:
             current_ticks = time.ticks_us()
 
             # We've moved one encoder tick in distance, so this gets the velocity in ticks per millisecond
-            self.velocity = 1/time.ticks_diff(current_ticks, self.last_tick)
+            self.velocity = 1000000.0/time.ticks_diff(current_ticks, self.last_tick)
             self.last_tick = current_ticks
 
-    @micropython.native
+    # @micropython.native
     def update_motor(self):
 
         if abs(self.distance - self.target) < self.encoder_tolerance:
@@ -90,18 +90,18 @@ class Wheel:
 
         if self.distance < self.target:
             # self.pwm_pin_a.duty_u16(self._velocity_to_pwm(self._target_velocity()))
-            self.pwm_pin_a.duty_u16(MAX_PWM - self.pwm)  # - self._velocity_to_pwm(self._target_velocity()))
-            self.pwm_pin_b.duty_u16(MAX_PWM)
+            self.pwm_pin_a.duty_u16(MAX_PWM)  # - self._velocity_to_pwm(self._target_velocity()))
+            self.pwm_pin_b.duty_u16(0)
         else:
-            self.pwm_pin_a.duty_u16(MAX_PWM)
-            self.pwm_pin_b.duty_u16(MAX_PWM - self.pwm)  # - self._velocity_to_pwm(self._target_velocity()))
+            self.pwm_pin_a.duty_u16(0)
+            self.pwm_pin_b.duty_u16(MAX_PWM)  # - self._velocity_to_pwm(self._target_velocity()))
 
-    @micropython.native
+    # @micropython.native
     def stop(self):
-        self.pwm_pin_a.duty_u16(0)
-        self.pwm_pin_b.duty_u16(0)
+        self.pwm_pin_a.duty_u16(MAX_PWM)
+        self.pwm_pin_b.duty_u16(MAX_PWM)
 
-    @micropython.native
+    # @micropython.native
     def _target_velocity(self) -> float:
         """
         Calculate the target velocity as per a trapezoidal profile, derived from the distance travelled (as that is the
@@ -137,7 +137,7 @@ class Wheel:
         else:
             return 0.0
 
-    @micropython.native
+    # @micropython.native
     def _velocity_to_pwm(self, v: float) -> int:
         """ Includes clamping to valid PWM range"""
         pwm = int(v * MAX_PWM) + self.pwm_offset
@@ -146,7 +146,7 @@ class Wheel:
         return pwm
 
 
-@micropython.native
+# @micropython.native
 def servo_loop(wheels: [Wheel]) -> None:
     """ Update the PWM setting for each motor using encoder feedback and PID control.
     """
@@ -154,7 +154,7 @@ def servo_loop(wheels: [Wheel]) -> None:
         wheel.update_motor()
 
 
-@micropython.native
+# @micropython.native
 def config_wheels() -> [Wheel]:
     """ Configure the wheel data classes
 

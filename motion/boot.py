@@ -27,8 +27,9 @@ while True:
 
     if time.ticks_diff(ticks_us, start_tick) % 500 == 0:
         servo_loop(wheels)
-        status(wheels, True)
-        print(command_queue)
+        if any([wheel.moving() for wheel in wheels]):
+            status(wheels, True)
+        # print(command_queue)
 
     # Command processing
     if uselect.select([sys.stdin], [], [], 0)[0]:

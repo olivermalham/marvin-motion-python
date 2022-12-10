@@ -71,9 +71,10 @@ def list_commands(_, arg_list):
 
 def status(wheels, _):
     """ List out all the distances and PWM settings for the motors """
+    #  V_target:{wheel.velocity}\t
     i = 0
     for wheel in wheels:
-        print(f"{wheel.wheel_name} - D:{wheel.distance}\t\t Target:{wheel.target}\t V_target:{wheel.velocity}\t A:{wheel.pwm_pin_a.duty_u16()}\t B:{wheel.pwm_pin_b.duty_u16()}")
+        print(f"{wheel.wheel_name}  - D:{wheel.distance}\t Target:{wheel.target}\t A:{wheel.pwm_pin_a.duty_u16()}\t B:{wheel.pwm_pin_b.duty_u16()}\t V:{wheel.velocity}")
         i = i + 1
     print("\n")
 
