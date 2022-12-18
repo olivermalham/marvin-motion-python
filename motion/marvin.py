@@ -4,6 +4,7 @@ from machine import PWM, Pin
 import micropython
 
 MAX_PWM = micropython.const(65535)
+V_CONVERT = MAX_PWM/540.0
 
 
 class Wheel:
@@ -19,10 +20,12 @@ class Wheel:
     encoder_a_last: int = 0
     last_tick = None
     velocity: float = 0.0
+    velocity_target: float = 0.0
     pwm_offset: int = 0
     FORWARD: int = 1
     REVERSE: int = 0
-    encoder_tolerance: int = 120
+    encoder_tolerance: int = 10
+    encoder_ticks: int = 1
 
     def __init__(self,
                  pwm_pin_a: PWM = None,
@@ -52,12 +55,14 @@ class Wheel:
         self.encoder_b = encoder_b
         self.last_tick = time.ticks_us()
         self.velocity = 0.0
+        self.velocity_target = 0.0
+        self.encoder_ticks = 1
         self.pwm_offset = 0
         self.wheel_name = wheel_name
 
     # @micropython.native
     def moving(self) -> bool:
-        return (self.pwm_pin_a.duty_u16() != MAX_PWM) or (self.pwm_pin_b.duty_u16() != MAX_PWM)
+        return (self.pwm_pin_a.duty_u16() < MAX_PWM) or (self.pwm_pin_b.duty_u16() < MAX_PWM)
 
     # @micropython.native
     def update_encoder(self):
@@ -75,9 +80,13 @@ class Wheel:
                 self.distance = self.distance - 1
             current_ticks = time.ticks_us()
 
-            # We've moved one encoder tick in distance, so this gets the velocity in ticks per millisecond
-            self.velocity = 1000000.0/time.ticks_diff(current_ticks, self.last_tick)
+            if abs(self.distance) > self.encoder_tolerance:
+                # We've moved one encoder tick in distance, so this gets the velocity in ticks per millisecond
+                current_velocity = 1000000.0/time.ticks_diff(current_ticks, self.last_tick)
+                # self.velocity = (current_velocity + self.encoder_ticks*self.velocity)/(self.encoder_ticks + 1)
+                self.velocity = current_velocity
             self.last_tick = current_ticks
+            self.encoder_ticks += 1
 
     # @micropython.native
     def update_motor(self):
@@ -87,19 +96,24 @@ class Wheel:
             return
 
         # self.pid.setpoint = self._target_velocity()
+        self.pid.setpoint = self.velocity_target
+        self.v_prop = self.velocity_target + self.pid(self.velocity)
+        self.pwm = self._velocity_to_pwm(self.v_prop)
+        self.pwm = int(MAX_PWM/3)
 
         if self.distance < self.target:
             # self.pwm_pin_a.duty_u16(self._velocity_to_pwm(self._target_velocity()))
-            self.pwm_pin_a.duty_u16(MAX_PWM)  # - self._velocity_to_pwm(self._target_velocity()))
+            self.pwm_pin_a.duty_u16(self.pwm)  # - self._velocity_to_pwm(self._target_velocity()))
             self.pwm_pin_b.duty_u16(0)
         else:
             self.pwm_pin_a.duty_u16(0)
-            self.pwm_pin_b.duty_u16(MAX_PWM)  # - self._velocity_to_pwm(self._target_velocity()))
+            self.pwm_pin_b.duty_u16(self.pwm)  # - self._velocity_to_pwm(self._target_velocity()))
 
     # @micropython.native
     def stop(self):
         self.pwm_pin_a.duty_u16(MAX_PWM)
         self.pwm_pin_b.duty_u16(MAX_PWM)
+        self.target = self.distance
 
     # @micropython.native
     def _target_velocity(self) -> float:
@@ -140,7 +154,8 @@ class Wheel:
     # @micropython.native
     def _velocity_to_pwm(self, v: float) -> int:
         """ Includes clamping to valid PWM range"""
-        pwm = int(v * MAX_PWM) + self.pwm_offset
+        # pwm = int(v * MAX_PWM) + self.pwm_offset
+        pwm = int(v * V_CONVERT) + self.pwm_offset
         pwm = MAX_PWM if pwm > MAX_PWM else pwm
         pwm = 0 if pwm < 0 else pwm
         return pwm
@@ -164,25 +179,25 @@ def config_wheels() -> [Wheel]:
             Wheel(wheel_name="1",
                   pwm_pin_a=PWM(Pin(6, Pin.OUT, value=0)),
                   pwm_pin_b=PWM(Pin(7, Pin.OUT, value=0)),
-                  encoder_a=Pin(16, Pin.IN), encoder_b=Pin(17, Pin.IN), pid=PID(scale="ms")),
+                  encoder_a=Pin(16, Pin.IN), encoder_b=Pin(17, Pin.IN), pid=PID(1, 0.1, 0.05, scale="ms", sample_time=50)),
             Wheel(wheel_name="2",
                   pwm_pin_a=PWM(Pin(0, Pin.OUT, value=0)),
                   pwm_pin_b=PWM(Pin(1, Pin.OUT, value=0)),
-                  encoder_a=Pin(22, Pin.IN), encoder_b=Pin(26, Pin.IN), pid=PID(scale="ms")),
+                  encoder_a=Pin(22, Pin.IN), encoder_b=Pin(26, Pin.IN), pid=PID(0.5, 0.0, 0.0, scale="ms", sample_time=50)),
             Wheel(wheel_name="3",
                   pwm_pin_a=PWM(Pin(8, Pin.OUT, value=0)),
                   pwm_pin_b=PWM(Pin(9, Pin.OUT, value=0)),
-                  encoder_a=Pin(18, Pin.IN), encoder_b=Pin(19, Pin.IN), pid=PID(scale="ms")),
+                  encoder_a=Pin(18, Pin.IN), encoder_b=Pin(19, Pin.IN), pid=PID(1, 0.1, 0.05, scale="ms", sample_time=50)),
             Wheel(wheel_name="4",
                   pwm_pin_a=PWM(Pin(2, Pin.OUT, value=0)),
                   pwm_pin_b=PWM(Pin(3, Pin.OUT, value=0)),
-                  encoder_a=Pin(14, Pin.IN), encoder_b=Pin(15, Pin.IN), pid=PID(scale="ms")),
+                  encoder_a=Pin(14, Pin.IN), encoder_b=Pin(15, Pin.IN), pid=PID(1, 0.1, 0.05, scale="ms", sample_time=50)),
             Wheel(wheel_name="5",
                   pwm_pin_a=PWM(Pin(10, Pin.OUT, value=0)),
                   pwm_pin_b=PWM(Pin(11, Pin.OUT, value=0)),
-                  encoder_a=Pin(20, Pin.IN), encoder_b=Pin(21, Pin.IN), pid=PID(scale="ms")),
+                  encoder_a=Pin(20, Pin.IN), encoder_b=Pin(21, Pin.IN), pid=PID(1, 0.1, 0.05, scale="ms", sample_time=50)),
             Wheel(wheel_name="6",
                   pwm_pin_a=PWM(Pin(4, Pin.OUT, value=0)),
                   pwm_pin_b=PWM(Pin(5, Pin.OUT, value=0)),
-                  encoder_a=Pin(13, Pin.IN), encoder_b=Pin(12, Pin.IN), pid=PID(scale="ms")),
+                  encoder_a=Pin(13, Pin.IN), encoder_b=Pin(12, Pin.IN), pid=PID(1, 0.1, 0.05, scale="ms", sample_time=50)),
             ]

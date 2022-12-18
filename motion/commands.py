@@ -40,6 +40,8 @@ def move(_, args):
         move 0,0.0 0,0.0 0,0.0 0,0.0 4000,1.0 0,0.0
         move 0,0.0 0,0.0 0,0.0 0,0.0 0,0.0 4000,1.0
 
+        move 0,0.0 8000,300.0 0,0.0 0,0.0 0,0.0 0,0.0
+
     """
     global command_queue
     new_command = []
@@ -63,7 +65,7 @@ def echo(_, arg_list):
     print(f"ECHO: {arg_list}")
 
 
-def list_commands(_, arg_list):
+def show_help(_, arg_list):
     """ List help for all supported commands """
     print(f"Commands available:")
     [print(f"\t{command}") for command in command_list.keys()]
@@ -71,17 +73,26 @@ def list_commands(_, arg_list):
 
 def status(wheels, _):
     """ List out all the distances and PWM settings for the motors """
-    #  V_target:{wheel.velocity}\t
+    list_commands(_, _)
     i = 0
     for wheel in wheels:
-        print(f"{wheel.wheel_name}  - D:{wheel.distance}\t Target:{wheel.target}\t A:{wheel.pwm_pin_a.duty_u16()}\t B:{wheel.pwm_pin_b.duty_u16()}\t V:{wheel.velocity}")
+        print(f"{wheel.wheel_name}  - D:{wheel.distance}\t Target:{wheel.target}\t A:{wheel.pwm_pin_a.duty_u16()}\t B:{wheel.pwm_pin_b.duty_u16()}\t V:{wheel.velocity}\t Vt:{wheel.velocity_target}\t Vp:{wheel.v_prop}\t PWM:{wheel.pwm}")
         i = i + 1
     print("\n")
+
+
+def list_commands(_, arg_list):
+    """ List out the current command queue """
+    index = 0
+    for command in command_queue:
+        print(f"{index} - {command}")
+        index += 1
 
 
 # Define a dictionary of functions that handle specific commands
 command_list = {"echo": echo,
                 "stop": stop,
                 "move": move,
-                "help": list_commands,
-                "status": status}
+                "help": show_help,
+                "status": status,
+                "list": list_commands}

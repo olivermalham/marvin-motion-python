@@ -3,8 +3,8 @@ from marvin import config_wheels, servo_loop
 import sys
 import uselect
 import time
-from commands import process_command, command_queue, status
-
+# from commands import process_command, command_queue, status
+import commands
 
 print("Marvin Motion Controller")
 
@@ -28,21 +28,23 @@ while True:
     if time.ticks_diff(ticks_us, start_tick) % 500 == 0:
         servo_loop(wheels)
         if any([wheel.moving() for wheel in wheels]):
-            status(wheels, True)
+            commands.status(wheels, True)
         # print(command_queue)
 
     # Command processing
     if uselect.select([sys.stdin], [], [], 0)[0]:
         c = sys.stdin.read(1)
-        command_input = process_command(c, command_input, wheels)
+        command_input = commands.process_command(c, command_input, wheels)
 
     [wheel.update_encoder() for wheel in wheels]
 
     # If we've finished moving, remove that command from the buffer and move on to the next
     if not any([wheel.moving() for wheel in wheels]):
-        if command_queue:
-            new_command = command_queue[0]
+        if len(commands.command_queue) > 0:
+            new_command = commands.command_queue[0]
+            commands.command_queue = commands.command_queue[1:]
             print(f"Executing command - {new_command}")
+            print(f"Command queue: {commands.command_queue}")
+            print(f"Command input: {command_input}")
             for i in range(len(new_command)):
-                wheels[i].target, wheels[i].v_prop = new_command[i]
-            command_queue = command_queue[1:]
+                wheels[i].target, wheels[i].velocity_target = new_command[i]
