@@ -4,7 +4,9 @@ from machine import PWM, Pin
 import micropython
 
 MAX_PWM = micropython.const(65535)
-V_CONVERT = MAX_PWM/540.0
+MAX_V = 250.0
+V_CONVERT = MAX_PWM/MAX_V
+SERVO_PERIOD = 10  # Milliseconds per servo loop run
 
 
 class Wheel:
@@ -13,6 +15,7 @@ class Wheel:
     pid: PID
     pwm: int = 0
     distance: int = 0
+    last_distance: int = 0
     target: int = 0
     v_prop: float = 0.0
     encoder_a: Pin
@@ -21,11 +24,11 @@ class Wheel:
     last_tick = None
     velocity: float = 0.0
     velocity_target: float = 0.0
-    pwm_offset: int = 0
+    pwm_offset: int = 20000
     FORWARD: int = 1
     REVERSE: int = 0
     encoder_tolerance: int = 10
-    encoder_ticks: int = 1
+    velocity_buffer: [float] = []
 
     def __init__(self,
                  pwm_pin_a: PWM = None,
@@ -56,15 +59,15 @@ class Wheel:
         self.last_tick = time.ticks_us()
         self.velocity = 0.0
         self.velocity_target = 0.0
-        self.encoder_ticks = 1
-        self.pwm_offset = 0
+        self.pwm_offset = 20000
         self.wheel_name = wheel_name
+        self.last_distance = 0
 
-    # @micropython.native
+    # @micropython.viper
     def moving(self) -> bool:
         return (self.pwm_pin_a.duty_u16() < MAX_PWM) or (self.pwm_pin_b.duty_u16() < MAX_PWM)
 
-    # @micropython.native
+    # @micropython.viper
     def update_encoder(self):
         """ Check if the encoder A channel has changed, if so check the encoder B channel to figure out direction
         and update the distance travelled. Update the measured velocity at the same time, used to drive the PID to
@@ -72,23 +75,15 @@ class Wheel:
 
         :return:
         """
-        if self.encoder_a.value() != self.encoder_a_last:
-            self.encoder_a_last = self.encoder_a.value()
-            if self.encoder_a.value() and self.encoder_b.value():
+        # Only update on a rising edge on encoder A channel
+        if self.encoder_a.value() != self.encoder_a_last and self.encoder_a.value():
+            if self.encoder_b.value():
                 self.distance = self.distance + 1
-            elif self.encoder_a.value() and not self.encoder_b.value():
+            else:
                 self.distance = self.distance - 1
-            current_ticks = time.ticks_us()
+        self.encoder_a_last = self.encoder_a.value()
 
-            if abs(self.distance) > self.encoder_tolerance:
-                # We've moved one encoder tick in distance, so this gets the velocity in ticks per millisecond
-                current_velocity = 1000000.0/time.ticks_diff(current_ticks, self.last_tick)
-                # self.velocity = (current_velocity + self.encoder_ticks*self.velocity)/(self.encoder_ticks + 1)
-                self.velocity = current_velocity
-            self.last_tick = current_ticks
-            self.encoder_ticks += 1
-
-    # @micropython.native
+    # @micropython.viper
     def update_motor(self):
 
         if abs(self.distance - self.target) < self.encoder_tolerance:
@@ -97,25 +92,40 @@ class Wheel:
 
         # self.pid.setpoint = self._target_velocity()
         self.pid.setpoint = self.velocity_target
-        self.v_prop = self.velocity_target + self.pid(self.velocity)
+        # self.v_prop = self.velocity_target + self.pid(self.velocity)
+        self.v_prop = self.pid(self.velocity)
         self.pwm = self._velocity_to_pwm(self.v_prop)
-        self.pwm = int(MAX_PWM/3)
+        # self.pwm = int(MAX_PWM/1)
 
         if self.distance < self.target:
-            # self.pwm_pin_a.duty_u16(self._velocity_to_pwm(self._target_velocity()))
-            self.pwm_pin_a.duty_u16(self.pwm)  # - self._velocity_to_pwm(self._target_velocity()))
+            self.pwm_pin_a.duty_u16(self.pwm)
             self.pwm_pin_b.duty_u16(0)
         else:
             self.pwm_pin_a.duty_u16(0)
-            self.pwm_pin_b.duty_u16(self.pwm)  # - self._velocity_to_pwm(self._target_velocity()))
+            self.pwm_pin_b.duty_u16(self.pwm)
 
-    # @micropython.native
+    # @micropython.viper
+    def update_velocity(self):
+        # current_ticks = time.ticks_us()
+        # velocity = 1000000.0/time.ticks_diff(current_ticks, self.last_tick)
+        velocity = (self.distance - self.last_distance)/(SERVO_PERIOD/1000.0)  # Servo loop runs every 20ms
+        self.last_distance = self.distance
+
+        # Average the velocity over 10 samples (is this too coarse?)
+        self.velocity_buffer.append(velocity)
+        if len(self.velocity_buffer) > 10:
+            self.velocity_buffer = self.velocity_buffer[:-10]
+        self.velocity = sum(self.velocity_buffer) / len(self.velocity_buffer)
+
+    # @micropython.viper
     def stop(self):
         self.pwm_pin_a.duty_u16(MAX_PWM)
         self.pwm_pin_b.duty_u16(MAX_PWM)
-        self.target = self.distance
+        self.target = 0
+        self.distance = 0
+        self.last_distance = 0
 
-    # @micropython.native
+    # @micropython.viper
     def _target_velocity(self) -> float:
         """
         Calculate the target velocity as per a trapezoidal profile, derived from the distance travelled (as that is the
@@ -151,7 +161,7 @@ class Wheel:
         else:
             return 0.0
 
-    # @micropython.native
+    # @micropython.viper
     def _velocity_to_pwm(self, v: float) -> int:
         """ Includes clamping to valid PWM range"""
         # pwm = int(v * MAX_PWM) + self.pwm_offset
@@ -161,15 +171,16 @@ class Wheel:
         return pwm
 
 
-# @micropython.native
+# @micropython.viper
 def servo_loop(wheels: [Wheel]) -> None:
     """ Update the PWM setting for each motor using encoder feedback and PID control.
     """
     for wheel in wheels:
+        wheel.update_velocity()
         wheel.update_motor()
 
 
-# @micropython.native
+# @micropython.viper
 def config_wheels() -> [Wheel]:
     """ Configure the wheel data classes
 
@@ -183,7 +194,7 @@ def config_wheels() -> [Wheel]:
             Wheel(wheel_name="2",
                   pwm_pin_a=PWM(Pin(0, Pin.OUT, value=0)),
                   pwm_pin_b=PWM(Pin(1, Pin.OUT, value=0)),
-                  encoder_a=Pin(22, Pin.IN), encoder_b=Pin(26, Pin.IN), pid=PID(0.5, 0.0, 0.0, scale="ms", sample_time=50)),
+                  encoder_a=Pin(22, Pin.IN), encoder_b=Pin(26, Pin.IN), pid=PID(1, 0.1, 0.05, scale="ms", sample_time=50)),
             Wheel(wheel_name="3",
                   pwm_pin_a=PWM(Pin(8, Pin.OUT, value=0)),
                   pwm_pin_b=PWM(Pin(9, Pin.OUT, value=0)),

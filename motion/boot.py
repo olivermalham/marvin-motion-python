@@ -1,5 +1,5 @@
 from machine import Pin
-from marvin import config_wheels, servo_loop
+from marvin import config_wheels, servo_loop, SERVO_PERIOD
 import sys
 import uselect
 import time
@@ -9,7 +9,8 @@ import commands
 print("Marvin Motion Controller")
 
 loop = 0
-start_tick = time.ticks_us()
+status_loop = 0
+last_tick = time.ticks_ms()
 
 led = Pin(25, Pin.OUT)
 led.high()
@@ -23,13 +24,17 @@ command_input = ""
 while True:
     loop = loop + 1
 
-    ticks_us = time.ticks_us()
+    ticks_ms = time.ticks_ms()
 
-    if time.ticks_diff(ticks_us, start_tick) % 500 == 0:
+    if time.ticks_diff(ticks_ms, last_tick) >= SERVO_PERIOD:
+        last_tick = ticks_ms
         servo_loop(wheels)
-        if any([wheel.moving() for wheel in wheels]):
-            commands.status(wheels, True)
-        # print(command_queue)
+        # status_loop += 1
+        # if status_loop >= 50 and any([wheel.moving() for wheel in wheels]):
+        #     # print(f"{time.ticks_ms()}")
+        #     commands.status(wheels, True)
+        #     # print(f"{time.ticks_ms()}")
+        #     status_loop = 0
 
     # Command processing
     if uselect.select([sys.stdin], [], [], 0)[0]:

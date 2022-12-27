@@ -28,7 +28,9 @@ seems to be the reverse of how the C code worked, so perhaps Micropython is doin
 now thank fuck.
 
 Next steps:
-1. Check that commands are queued and handled correctly
+1. Check that commands are queued and handled correctly DONE
 2. Get the trapezoidal motion profile working without PID or relative velocity scaling (basically get back to the same level as the old C code)
 3. Add velocity scaling
 4. Add PID feedback loop
+
+# WARNING!!!! Do NOT use print statements in the loop they slow down the loop polling and fuck up the encoder monitoring
